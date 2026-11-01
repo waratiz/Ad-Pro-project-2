@@ -47,7 +47,8 @@ public class GameController {
     private final Ball ball = new Ball();
     private final Paddle paddle = new Paddle();
 
-    private int score, life = 3, stage = 1; //put initial combo here
+    private int score, life = 3, stage = 1, combo = 0;//put initial combo here
+
 
     private final Set<KeyCode> keys = new HashSet<>();
     private final Set<PowerUp> active = EnumSet.noneOf(PowerUp.class);   // make a set specifically for powerups. starting with 0 active
@@ -153,6 +154,8 @@ public class GameController {
             ball.setVy(-s * Math.cos(angle));
             ball.setY(p.getMinY() - ball.getHeight());
             //reset them combo and make it reflect in view
+            combo = 1 ;
+            view.setCombo(combo);
         }
     }
 
@@ -184,10 +187,12 @@ public class GameController {
             view.removeBrickNode(node);
             double bonus = active.contains(PowerUp.BONUS_POINTS) ? BONUS_MULTIPLIER : 1.0;
             //score calc
-            score += (int) Math.round(brick.getScore() * bonus); // put combo in the fucking formula as a mult
+            score += (int) Math.round(brick.getScore() * bonus * combo); // put combo in the fucking formula as a mult
             //make combo go up by 1, reflect in view
+            combo++;
             //why? cuz the fucking combo goes up by 1 a brivk die thats why
             view.setScore(score);
+            view.setCombo(combo);
         }
         break;                                           // one brick each time
     }
@@ -206,7 +211,9 @@ public class GameController {
     if (ball.getY() > GameView.H) {
         life--;
         //reset the damn combo and reflect in view
+        combo = 1;
         view.setLife(life);
+        view.setCombo(combo);
         if (!active.contains(PowerUp.EXPAND)) resetPaddle();   // power-ups end when you lose a life
         ball.stickTo(paddle.getCenterX(), paddle.getY());
         //if life is 0, game over. show message. paused game
@@ -269,6 +276,8 @@ public class GameController {
         view.loadStage(stage);
         //as i said, reset the damn combo and set it in view
         //theres a fucking set combo function for fuck sake
+        combo = 1;
+        view.setCombo(combo);
         paddle.setX(clamp(GameView.W / 2 - paddle.getWidth() / 2, WALL_LEFT, WALL_RIGHT - paddle.getWidth()));
         ball.stickTo(paddle.getCenterX(), paddle.getY());
         state = State.PLAYING;
