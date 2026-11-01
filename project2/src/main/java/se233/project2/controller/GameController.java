@@ -29,7 +29,7 @@ public class GameController {
 
     private enum State { PLAYING, SELECTING, FINISHED }   // what the game is doing right now
 
-    private static final double BALL_SPEED = 120;      
+    private static final double BALL_SPEED = 180;      
     private static final double PADDLE_SPEED = 180;    
     private static final double BONUS_MULTIPLIER = 1.5;   // score mult
     private static final double WALL_LEFT = GameView.WALL_LEFT,
