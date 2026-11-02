@@ -3,6 +3,7 @@ module se233.project2 {
     requires javafx.fxml;
     requires javafx.graphics;
     requires javafx.base;
+    requires java.logging;
 
     opens se233.project2 to javafx.fxml;
     opens se233.project2.controller to javafx.fxml;

@@ -1,9 +1,14 @@
 package se233.project2.view;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.TranslateTransition;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Pane;
 import javafx.scene.text.FontWeight;
 import javafx.scene.transform.Scale;
+import javafx.util.Duration;
 import se233.project2.model.Brick;
 import se233.project2.model.PowerUp;
 import se233.project2.util.SpriteSheet;
@@ -178,11 +183,6 @@ public class GameView extends Pane {
         centerText(levelText, 16);                 // กลางจอ
     }
 
-    public void setTotalStages(int total) {
-        totalStages = total;
-        setLevel(currentStage);                    // วาดข้อความใหม่
-    }
-
     public void setScore(int score) {
         scoreText.setText("SCORE: " + score);
         scoreText.setLayoutX(8);                   // ซ้าย
@@ -231,6 +231,42 @@ public class GameView extends Pane {
         setLevel(stage);                                // read stage and make bricks
         createBricks(blocks);
         world.getChildren().addAll(1, bricks);          // above the background, below paddle and ball
+    }
+
+    public void flashBrick(ImageView node) {              // hit but not dead (STRONG, HM)
+        FadeTransition ft = new FadeTransition(Duration.millis(60), node);
+        ft.setFromValue(1);
+        ft.setToValue(0.3);
+        ft.setCycleCount(4);
+        ft.setAutoReverse(true);
+        ft.play();
+        //flash white then auto return within 60ms or something like that
+    }
+
+    public void breakBrick(ImageView node, int points) {  // it broke? wow, sucg genus
+        ScaleTransition st = new ScaleTransition(Duration.millis(180), node);
+        st.setToX(1.3);
+        st.setToY(1.3);
+        FadeTransition ft = new FadeTransition(Duration.millis(180), node);
+        ft.setToValue(0);
+        ParallelTransition pt = new ParallelTransition(st, ft);
+        pt.setOnFinished(e -> world.getChildren().remove(node));
+        pt.play();
+
+        // floating "+score" thingy
+        Text pop = new Text("+" + points);
+        pop.setFont(font);
+        pop.setFill(Color.YELLOW);//ya is a yellow score text
+        pop.setLayoutX(node.getLayoutX());
+        pop.setLayoutY(node.getLayoutY() + 6);// so its on top of stuff
+        world.getChildren().add(pop); //instance it on brick that broke
+        TranslateTransition up = new TranslateTransition(Duration.millis(500), pop);
+        up.setByY(-12); // float up like half a sec
+        FadeTransition fade = new FadeTransition(Duration.millis(500), pop);
+        fade.setToValue(0); // also fade for like, half a sec
+        ParallelTransition pp = new ParallelTransition(up, fade); // do them both at the same time
+        pp.setOnFinished(e -> world.getChildren().remove(pop));// finish? great, remove it
+        pp.play();
     }
 
     public void showCards(List<PowerUp> choices, Consumer<PowerUp> onPick) { cards.showCards(choices, onPick); }

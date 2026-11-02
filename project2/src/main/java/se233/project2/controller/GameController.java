@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import javafx.animation.AnimationTimer;
 import javafx.animation.PauseTransition;
@@ -18,10 +19,13 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import se233.project2.util.GameException;
 import se233.project2.model.Ball;
 import se233.project2.model.Brick;
+import se233.project2.model.GameState;
 import se233.project2.model.Paddle;
 import se233.project2.model.PowerUp;
+import se233.project2.util.GameLog;
 import se233.project2.view.GameView;
 
 
@@ -29,13 +33,14 @@ public class GameController {
 
     private enum State { PLAYING, SELECTING, FINISHED }   // what the game is doing right now
 
-    private static final double BALL_SPEED = 180;      
-    private static final double PADDLE_SPEED = 180;    
+    private static final double BALL_SPEED = 180;
+    private static final double PADDLE_SPEED = 180;
     private static final double BONUS_MULTIPLIER = 1.5;   // score mult
     private static final double WALL_LEFT = GameView.WALL_LEFT,
-                            WALL_RIGHT = GameView.WALL_RIGHT,
-                            WALL_TOP = GameView.WALL_TOP;
+            WALL_RIGHT = GameView.WALL_RIGHT,
+            WALL_TOP = GameView.WALL_TOP;
     private AnimationTimer loop;
+    private static final Logger LOG = GameLog.get(GameController.class); // for logging and such
 
     // list of power up thats finished rn
     private static final List<PowerUp> POOL =
@@ -47,7 +52,8 @@ public class GameController {
     private final Ball ball = new Ball();
     private final Paddle paddle = new Paddle();
 
-    private int score, life = 3, stage = 1, combo = 0;//put initial combo here
+    private final GameState gs = new GameState();   // score, life and combo live here so they can be unit tested
+    private int stage = 1;//initial stats
 
 
     private final Set<KeyCode> keys = new HashSet<>();
@@ -59,24 +65,30 @@ public class GameController {
     public GameController() {
         paddle.setX(GameView.W / 2 - paddle.getWidth() / 2);
         ball.stickTo(paddle.getCenterX(), paddle.getY());
+        LOG.info("Game started");
 
         scene.setOnKeyPressed(e -> {
-        keys.add(e.getCode());
-        //make it start a lil bent so it doesnt ping pong infinitely
-        if (e.getCode() == KeyCode.SPACE && state == State.PLAYING && !ball.isLaunched()) ball.launch(BALL_SPEED, 15);
-        if (state == State.SELECTING) {                   // picking cards with 1 2 3
-            int i = switch (e.getCode()) {
-                case DIGIT1 -> 0;
-                case DIGIT2 -> 1;
-                case DIGIT3 -> 2;
-                default -> -1;
-            };
-            if (i >= 0 && i < choices.size()) pick(choices.get(i));
-        }
-    });
+            keys.add(e.getCode());
+            //make it start a lil bent so it doesnt ping pong infinitely
+            if (e.getCode() == KeyCode.SPACE && state == State.PLAYING && !ball.isLaunched()) {
+                ball.launch(BALL_SPEED, 15);
+                LOG.info("Ball launched");
+            }
+            if (state == State.SELECTING) {
+                int i = switch (e.getCode()) {
+                    // picking cards with 1 2 3
+                    //make it 0 1 2 cuz the cards are list
+                    case DIGIT1 -> 0;
+                    case DIGIT2 -> 1;
+                    case DIGIT3 -> 2;
+                    default -> -1;
+                };
+                if (i >= 0 && i < choices.size()) pick(choices.get(i));
+            }
+        });
         scene.setOnKeyReleased(e -> keys.remove(e.getCode()));
 
-            loop = new AnimationTimer() {
+        loop = new AnimationTimer() {
             @Override public void handle(long now) {
                 if (last == 0) { last = now; return; }
                 //calc in nanosecond for accuracy
@@ -127,110 +139,115 @@ public class GameController {
     }
     private void collideWalls() {
         //left wall make vx positive so it goes right always
-    if (ball.getX() < WALL_LEFT) {
-        ball.setX(WALL_LEFT);
-        ball.setVx(Math.abs(ball.getVx()));
-    }
-    //right wall makes it negative to go left
-    if (ball.getX() + ball.getWidth() > WALL_RIGHT) {
-        ball.setX(WALL_RIGHT - ball.getWidth());
-        ball.setVx(-Math.abs(ball.getVx()));
-    }
-    //top wall makes vy positive to go down
-    if (ball.getY() < WALL_TOP) {
-        ball.setY(WALL_TOP);
-        ball.setVy(Math.abs(ball.getVy()));
-    }
+        if (ball.getX() < WALL_LEFT) {
+            ball.setX(WALL_LEFT);
+            ball.setVx(Math.abs(ball.getVx()));
+        }
+        //right wall makes it negative to go left
+        if (ball.getX() + ball.getWidth() > WALL_RIGHT) {
+            ball.setX(WALL_RIGHT - ball.getWidth());
+            ball.setVx(-Math.abs(ball.getVx()));
+        }
+        //top wall makes vy positive to go down
+        if (ball.getY() < WALL_TOP) {
+            ball.setY(WALL_TOP);
+            ball.setVy(Math.abs(ball.getVy()));
+        }
     }
 
     private void collidePaddle() {
         Bounds b = ball.getBounds(), p = paddle.getBounds();
         if (ball.getVy() > 0 && b.intersects(p)) {
-            double hit = (b.getCenterX() - p.getCenterX()) / (p.getWidth() / 2);
-            hit = Math.max(-1, Math.min(1, hit));
+            double raw = (b.getCenterX() - p.getCenterX()) / (p.getWidth() / 2);
+            double hit = Math.max(-1, Math.min(1, raw));
             double angle = hit * Math.toRadians(60);
             double s = ball.speed();
             ball.setVx(s * Math.sin(angle));
             ball.setVy(-s * Math.cos(angle));
             ball.setY(p.getMinY() - ball.getHeight());
-            //reset them combo and make it reflect in view
-            combo = 1 ;
-            view.setCombo(combo);
+            gs.resetCombo();
+            view.setCombo(gs.getCombo());
+            LOG.fine(() -> "Paddle bounce, offset " + String.format("%.2f", hit));
         }
     }
 
     private void collideBricks() {
-    Bounds b = ball.getBounds();
-    Iterator<ImageView> it = view.getBricks().iterator();
-    while (it.hasNext()) {
-        // loop over every brick
-        ImageView node = it.next();
-        // get the property from node
-        Brick brick = (Brick) node.getUserData();
-        Bounds r = brick.getBounds();
-        //check if ball hit or nah
-        if (!b.intersects(r)) continue;
+        Bounds b = ball.getBounds();
+        Iterator<ImageView> it = view.getBricks().iterator();
+        while (it.hasNext()) {
+            // loop over every brick
+            ImageView node = it.next();
+            // get the property from node
+            Brick brick = (Brick) node.getUserData();
+            Bounds r = brick.getBounds();
+            //check if ball hit or nah
+            if (!b.intersects(r)) continue;
 
-        // check where hit
-        double ox = Math.min(b.getMaxX(), r.getMaxX()) - Math.max(b.getMinX(), r.getMinX());
-        double oy = Math.min(b.getMaxY(), r.getMaxY()) - Math.max(b.getMinY(), r.getMinY());
-        if (ox < oy) {                                   // sides
-            if (b.getCenterX() < r.getCenterX()) ball.setVx(-Math.abs(ball.getVx()));
-            else                                  ball.setVx( Math.abs(ball.getVx()));
-        } else {                                         // top/bottom
-            if (b.getCenterY() < r.getCenterY()) ball.setVy(-Math.abs(ball.getVy()));
-            else                                  ball.setVy( Math.abs(ball.getVy()));
-        }
+            // check where hit
+            double ox = Math.min(b.getMaxX(), r.getMaxX()) - Math.max(b.getMinX(), r.getMinX());
+            double oy = Math.min(b.getMaxY(), r.getMaxY()) - Math.max(b.getMinY(), r.getMinY());
+            if (ox < oy) {                                   // sides
+                if (b.getCenterX() < r.getCenterX()) ball.setVx(-Math.abs(ball.getVx()));
+                else                                  ball.setVx( Math.abs(ball.getVx()));
+            } else {                                         // top/bottom
+                if (b.getCenterY() < r.getCenterY()) ball.setVy(-Math.abs(ball.getVy()));
+                else                                  ball.setVy( Math.abs(ball.getVy()));
+            }
 
-        if (brick.hit()) {                               // check if it die or not
-            it.remove();
-            view.removeBrickNode(node);
-            double bonus = active.contains(PowerUp.BONUS_POINTS) ? BONUS_MULTIPLIER : 1.0;
-            //score calc
-            score += (int) Math.round(brick.getScore() * bonus * combo); // put combo in the fucking formula as a mult
-            //make combo go up by 1, reflect in view
-            combo++;
-            //why? cuz the fucking combo goes up by 1 a brivk die thats why
-            view.setScore(score);
-            view.setCombo(combo);
+            if (brick.hit()) {                               // check if it die or not
+                it.remove();
+                double bonus = active.contains(PowerUp.BONUS_POINTS) ? BONUS_MULTIPLIER : 1.0;
+                //score calc
+                int gained = gs.addBrickScore(brick.getScore(), bonus);
+                view.breakBrick(node, gained);               // shrink, fade and +score popup. node removes itself after
+                view.setScore(gs.getScore());
+                view.setCombo(gs.getCombo());
+                LOG.info(() -> "Brick destroyed: " + brick.getType() + " +" + gained
+                        + " (score " + gs.getScore() + ", combo x" + gs.getCombo() + ")");
+            } else{
+                view.flashBrick(node); //well, got hit and didnt die
+                LOG.fine(() -> "Brick hit but still standing: " + brick.getType());
+            }
+            break;                                           // one brick each time
         }
-        break;                                           // one brick each time
-    }
     }
 
     private boolean isStageCleared() {
         // check for bricks
-    for (ImageView n : view.getBricks()) {
-        //if breakable brick still left, not win yet
-        if (((Brick) n.getUserData()).isRequired()) return false;
-    }
-    return true;
+        for (ImageView n : view.getBricks()) {
+            //if breakable brick still left, not win yet
+            if (((Brick) n.getUserData()).isRequired()) return false;
+        }
+        return true;
     }
 
     private void checkBallLost() {
-    if (ball.getY() > GameView.H) {
-        life--;
-        //reset the damn combo and reflect in view
-        combo = 1;
-        view.setLife(life);
-        view.setCombo(combo);
-        if (!active.contains(PowerUp.EXPAND)) resetPaddle();   // power-ups end when you lose a life
-        ball.stickTo(paddle.getCenterX(), paddle.getY());
-        //if life is 0, game over. show message. paused game
-        if (life <= 0) {
-            state = State.FINISHED;
-            view.showMessage("GAME OVER   SCORE " + score);
-            showSummary("GAME OVER");
+        if (ball.getY() > GameView.H) {
+            boolean over = gs.loseLife();
+            //reset the damn combo and reflect in view
+            view.setLife(gs.getLife());
+            view.setCombo(gs.getCombo());
+            LOG.warning(() -> "Life lost, " + gs.getLife() + " left");
+            if (!active.contains(PowerUp.EXPAND)) resetPaddle();   // just checking if wide pad is active or nah
+            ball.stickTo(paddle.getCenterX(), paddle.getY());
+            //if life is 0, game over. show message. paused game
+            if (over) {
+                state = State.FINISHED;
+                LOG.info(() -> "Game over, final score " + gs.getScore());
+                view.showMessage("GAME OVER   SCORE " + gs.getScore());
+                showSummary("GAME OVER");
+            }
         }
-    }
     }
 
     private void onStageCleared() {
         ball.stickTo(paddle.getCenterX(), paddle.getY());      // get balls back on them paddle
+        LOG.info(() -> "Stage " + stage + " cleared");
 
         if (stage >= view.getTotalStages()) {                  // if its last stage, show win. pause game
             state = State.FINISHED;
-            view.showMessage("YOU WIN!   SCORE " + score);
+            LOG.info(() -> "Game won, final score " + gs.getScore());
+            view.showMessage("YOU WIN!   SCORE " + gs.getScore());
             showSummary("YOU WIN!");
             return;
         }
@@ -244,7 +261,7 @@ public class GameController {
         view.showCards(choices, this::pick);
     }
 
-        private void showSummary(String result) {
+    private void showSummary(String result) {
         PauseTransition wait = new PauseTransition(Duration.seconds(1.5));   // wait for them to process their loss
         wait.setOnFinished(e -> {
             loop.stop();                                      // when game is finished, stop the game loop so no more process
@@ -254,30 +271,29 @@ public class GameController {
                 Parent root = fxml.load();
                 Summary summary = fxml.getController();
                 summary.setResult(result);
-                summary.setScore(score);
+                summary.setScore(gs.getScore());
 
                 Stage stage = (Stage) scene.getWindow();
                 stage.setScene(new Scene(root));
                 stage.sizeToScene();
                 stage.centerOnScreen();
             } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                throw new GameException("Failed to load summary screen", ex);   // caught in one place by ErrorHandler
             }
         });
         wait.play();
     }
 
     private void pick(PowerUp p) {
-        if (state != State.SELECTING) return;                  // make sure it doesnt bug and apply shit more than once
+        if (state != State.SELECTING) return;                  // make sure it doesnt bug and apply things more than once
         view.hideCards();
         applyPowerUp(p);
+        LOG.info(() -> "Power-up picked: " + p);
 
         stage++;
         view.loadStage(stage);
-        //as i said, reset the damn combo and set it in view
-        //theres a fucking set combo function for fuck sake
-        combo = 1;
-        view.setCombo(combo);
+        gs.resetCombo();
+        view.setCombo(gs.getCombo());
         paddle.setX(clamp(GameView.W / 2 - paddle.getWidth() / 2, WALL_LEFT, WALL_RIGHT - paddle.getWidth()));
         ball.stickTo(paddle.getCenterX(), paddle.getY());
         state = State.PLAYING;
@@ -287,29 +303,30 @@ public class GameController {
         switch (p) {
             case EXPAND -> { active.add(p); expandPaddle(); }
             case BONUS_POINTS -> active.add(p);
-            case EXTRA_LIFE -> { life++; view.setLife(life); }
+            case EXTRA_LIFE -> { gs.gainLife(); view.setLife(gs.getLife()); }
         }
     }
 
     private void setPaddleWidth(double newW, int spriteX) {
-    double cx = paddle.getCenterX();                     // kept the center pos
-    paddle.setWidth(newW);                               // well, the thing got a wider hitbox now
-    paddle.setX(clamp(cx - newW / 2, WALL_LEFT, WALL_RIGHT - newW));
-    view.setPaddleSprite(spriteX, 0, (int) newW, 8);     // change to a wide sprite
+        double cx = paddle.getCenterX();                     // kept the center pos
+        paddle.setWidth(newW);                               // well, the thing got a wider hitbox now
+        paddle.setX(clamp(cx - newW / 2, WALL_LEFT, WALL_RIGHT - newW));
+        view.setPaddleSprite(spriteX, 0, (int) newW, 8);     // change to a wide sprite
     }
 
     private void expandPaddle() { setPaddleWidth(44, 66); } // thats where the sprite located. top left as always
     private void resetPaddle()  { setPaddleWidth(28, 34); } // normal Vaus
 
     private static double clamp(double v, double lo, double hi) {
-        //ok so, here we have some bullshit
         //v is the pos thats on the top left because of course its there
         //lo is minimum pos so it doesnt clip into left wall
         //hi is just that but for right wall
         //thats why its low and high respectively
         //so v get force min and max if it doesnt fit
-    return Math.max(lo, Math.min(v, hi));
+        return Math.max(lo, Math.min(v, hi));
     }
+
+
 
     private void syncView() {
         view.getPaddle().setLayoutX(Math.round(paddle.getX()));
@@ -317,5 +334,7 @@ public class GameController {
         view.getBall().setLayoutY(Math.round(ball.getY()));
     }
 
-    
+
+
+
 }
