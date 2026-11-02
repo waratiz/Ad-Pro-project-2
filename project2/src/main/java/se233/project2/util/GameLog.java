@@ -10,10 +10,10 @@ public final class GameLog {
     private static final Logger ROOT = Logger.getLogger("se233.project2");
     static {
         try {
-            FileHandler fh = new FileHandler("arkanoid.log", true);  // get all them levels into file
+            FileHandler fh = new FileHandler("arkanoid.log", true);  // make a log file, make it able to append in
             fh.setFormatter(new SimpleFormatter());
             ROOT.addHandler(fh);
-            ROOT.setLevel(Level.ALL);                                // console only get them INFO
+            ROOT.setLevel(Level.ALL);                                // console get everything too
         } catch (IOException e) {
             System.err.println("File logging disabled: " + e.getMessage());
         }

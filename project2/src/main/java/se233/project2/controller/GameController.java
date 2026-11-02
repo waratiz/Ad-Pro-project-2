@@ -52,7 +52,7 @@ public class GameController {
     private final Ball ball = new Ball();
     private final Paddle paddle = new Paddle();
 
-    private final GameState gs = new GameState();   // score, life and combo live here so they can be unit tested
+    private final GameState gs = new GameState();   // score, life and combo here so they can be unit tested
     private int stage = 1;//initial stats
 
 

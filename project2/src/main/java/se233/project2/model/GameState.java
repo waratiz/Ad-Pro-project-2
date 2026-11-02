@@ -21,6 +21,7 @@ public class GameState {
         return life <= 0;
     }
 
+    //settor and getter
     public int getScore() { return score; }
     public int getLife()  { return life; }
     public int getCombo() { return combo; }

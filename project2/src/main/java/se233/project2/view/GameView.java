@@ -243,13 +243,16 @@ public class GameView extends Pane {
         //brick flickered for 120 ms total, 60 flicker then 60 flicker return
     }
 
-    public void breakBrick(ImageView node, int points) {  // it broke? wow, sucg genus
+    public void breakBrick(ImageView node, int points) {  // it broke? wow, such genus
         ScaleTransition st = new ScaleTransition(Duration.millis(180), node);
         st.setToX(1.3);
         st.setToY(1.3);
+        //scale to make it bigger by 30% for 180ms
         FadeTransition ft = new FadeTransition(Duration.millis(180), node);
         ft.setToValue(0);
+        //also make it fade for 180ms
         ParallelTransition pt = new ParallelTransition(st, ft);
+        //make em explode and fade at the same time
         pt.setOnFinished(e -> world.getChildren().remove(node));
         pt.play();
 
