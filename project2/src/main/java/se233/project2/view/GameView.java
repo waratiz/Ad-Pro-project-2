@@ -57,7 +57,7 @@ public class GameView extends Pane {
     // a row can sit anywhere, you can have more or fewer rows than 6
     private static final String[][] STAGE_LAYOUTS = {
             {   // stage 1: full rows
-                    "N  S  B  HM  A  A  A  "
+                    "HM  S  B  N  A  A  A  "
             },
             {   // stage 2: sum bs
                     "N"

@@ -7,7 +7,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.logging.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javafx.animation.AnimationTimer;
 import javafx.animation.PauseTransition;
@@ -25,7 +26,6 @@ import se233.project2.model.Brick;
 import se233.project2.model.GameState;
 import se233.project2.model.Paddle;
 import se233.project2.model.PowerUp;
-import se233.project2.util.GameLog;
 import se233.project2.view.GameView;
 
 
@@ -40,7 +40,7 @@ public class GameController {
             WALL_RIGHT = GameView.WALL_RIGHT,
             WALL_TOP = GameView.WALL_TOP;
     private AnimationTimer loop;
-    private static final Logger LOG = GameLog.get(GameController.class); // for logging and such
+    private static final Logger LOG = LogManager.getLogger(GameController.class); // for logging and such
 
     // list of power up thats finished rn
     private static final List<PowerUp> POOL =
@@ -167,7 +167,7 @@ public class GameController {
             ball.setY(p.getMinY() - ball.getHeight());
             gs.resetCombo();
             view.setCombo(gs.getCombo());
-            LOG.fine(() -> "Paddle bounce, offset " + String.format("%.2f", hit));
+            LOG.debug(() -> "Paddle bounce, offset " + String.format("%.2f", hit));
         }
     }
 
@@ -206,7 +206,7 @@ public class GameController {
                         + " (score " + gs.getScore() + ", combo x" + gs.getCombo() + ")");
             } else{
                 view.flashBrick(node); //well, got hit and didnt die
-                LOG.fine(() -> "Brick hit but still standing: " + brick.getType());
+                LOG.debug(() -> "Brick hit but still standing: " + brick.getType());
             }
             break;                                           // one brick each time
         }
@@ -227,7 +227,7 @@ public class GameController {
             //reset the damn combo and reflect in view
             view.setLife(gs.getLife());
             view.setCombo(gs.getCombo());
-            LOG.warning(() -> "Life lost, " + gs.getLife() + " left");
+            LOG.warn(() -> "Life lost, " + gs.getLife() + " left");
             if (!active.contains(PowerUp.EXPAND)) resetPaddle();   // just checking if wide pad is active or nah
             ball.stickTo(paddle.getCenterX(), paddle.getY());
             //if life is 0, game over. show message. paused game

@@ -17,16 +17,43 @@ public class GameStateTest {
 
     @Test void losingLifeResetsComboAndSignalsGameOver() {
         GameState gs = new GameState();
-        gs.addBrickScore(10, 1.0);
-        assertFalse(gs.loseLife());
-        assertEquals(1, gs.getCombo());
-        gs.loseLife();
-        assertTrue(gs.loseLife());                     // 3rd loss = game over
+        gs.addBrickScore(10, 1.0);            // combo -> 2
+        assertFalse(gs.loseLife());           // life 2
+        assertEquals(1, gs.getCombo());       // combo reset
+        assertFalse(gs.loseLife());           // life 1
+        assertTrue(gs.loseLife());            // life 0 -> game over
     }
 
     @Test void extraLifeAddsOne() {
         GameState gs = new GameState();
         gs.gainLife();
         assertEquals(4, gs.getLife());
+    }
+
+    @Test void resetCombo() {
+        GameState gs = new GameState();
+        gs.addBrickScore(10, 1.0);
+        gs.addBrickScore(10, 1.0);
+        gs.resetCombo();
+        assertEquals(1, gs.getCombo());
+        assertEquals(30, gs.getScore());     // คะแนนไม่หาย
+    }
+
+    @Test void startingValues() {
+        GameState gs = new GameState();
+        assertEquals(0, gs.getScore());
+        assertEquals(3, gs.getLife());
+        assertEquals(1, gs.getCombo());      // กันบั๊ก combo = 0 ที่เคยเจอ
+    }
+
+    @Test void bonusAndComboStack() {
+        GameState gs = new GameState();
+        gs.addBrickScore(10, 1.5);           // 15, combo -> 2
+        assertEquals(30, gs.addBrickScore(10, 1.5));   // 10 x 1.5 x 2
+    }
+
+    @Test void bonusRoundsToNearestInt() {
+        // 30 x 1.5 = 45 ตรงๆ; ลองค่าที่เป็นทศนิยม .5 เพื่อดู Math.round
+        assertEquals(8, new GameState().addBrickScore(5, 1.5));   // 7.5 -> 8
     }
 }
