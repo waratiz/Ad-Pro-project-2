@@ -240,7 +240,7 @@ public class GameView extends Pane {
         ft.setCycleCount(4);
         ft.setAutoReverse(true);
         ft.play();
-        //flash white then auto return within 60ms or something like that
+        //brick flickered for 120 ms total, 60 flicker then 60 flicker return
     }
 
     public void breakBrick(ImageView node, int points) {  // it broke? wow, sucg genus
