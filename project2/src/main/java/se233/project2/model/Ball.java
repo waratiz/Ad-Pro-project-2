@@ -17,7 +17,7 @@ public class Ball {
 
     public void launch(double speed, double angleDeg) {
         //pizza slice round the circle. full circle is 2pi radian. half is pi radian
-        //doesnt accept degree for whatever reason
+        //doesn't accept degree for whatever reason
         double a = Math.toRadians(angleDeg);
         vx = speed * Math.sin(a);
         vy = -speed * Math.cos(a);

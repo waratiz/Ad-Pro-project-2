@@ -88,6 +88,7 @@ public class GameController {
         });
         scene.setOnKeyReleased(e -> keys.remove(e.getCode()));
 
+        //Updates every frame continuously after loop.start().
         loop = new AnimationTimer() {
             @Override public void handle(long now) {
                 if (last == 0) { last = now; return; }
@@ -118,7 +119,8 @@ public class GameController {
         if (keys.contains(KeyCode.LEFT))  dir -= 1;
         if (keys.contains(KeyCode.RIGHT)) dir += 1;
         double x = paddle.getX() + dir * PADDLE_SPEED * dt;
-        paddle.setX(Math.max(0, Math.min(x, GameView.W - paddle.getWidth())));
+
+        //prevent penetration through the left or right wall
         paddle.setX(clamp(x, WALL_LEFT, WALL_RIGHT - paddle.getWidth()));
 
         // 2. ball
@@ -158,12 +160,12 @@ public class GameController {
     private void collidePaddle() {
         Bounds b = ball.getBounds(), p = paddle.getBounds();
         if (ball.getVy() > 0 && b.intersects(p)) {
-            double raw = (b.getCenterX() - p.getCenterX()) / (p.getWidth() / 2);
+            double raw = (b.getCenterX() - p.getCenterX()) / (p.getWidth() / 2); //find position ball interact with paddle
             double hit = Math.max(-1, Math.min(1, raw));
             double angle = hit * Math.toRadians(60);
             double s = ball.speed();
-            ball.setVx(s * Math.sin(angle));
-            ball.setVy(-s * Math.cos(angle));
+            ball.setVx(s * Math.sin(angle)); //Left/Right
+            ball.setVy(-s * Math.cos(angle)); //go to the top.
             ball.setY(p.getMinY() - ball.getHeight());
             gs.resetCombo();
             view.setCombo(gs.getCombo());
@@ -199,7 +201,7 @@ public class GameController {
                 double bonus = active.contains(PowerUp.BONUS_POINTS) ? BONUS_MULTIPLIER : 1.0;
                 //score calc
                 int gained = gs.addBrickScore(brick.getScore(), bonus);
-                view.breakBrick(node, gained);               // shrink, fade and +score popup. node removes itself after
+                view.breakBrick(node, gained);               // Expand, fade and +score popup. node removes itself after
                 view.setScore(gs.getScore());
                 view.setCombo(gs.getCombo());
                 LOG.info(() -> "Brick destroyed: " + brick.getType() + " +" + gained
@@ -317,6 +319,7 @@ public class GameController {
     private void expandPaddle() { setPaddleWidth(44, 66); } // thats where the sprite located. top left as always
     private void resetPaddle()  { setPaddleWidth(28, 34); } // normal Vaus
 
+    //Preventing penetration through both walls.
     private static double clamp(double v, double lo, double hi) {
         //v is the pos thats on the top left because of course its there
         //lo is minimum pos so it doesnt clip into left wall
@@ -327,7 +330,7 @@ public class GameController {
     }
 
 
-
+    //Transfer the results to ImageView.
     private void syncView() {
         view.getPaddle().setLayoutX(Math.round(paddle.getX()));
         view.getBall().setLayoutX(Math.round(ball.getX()));

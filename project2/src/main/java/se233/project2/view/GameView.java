@@ -233,11 +233,12 @@ public class GameView extends Pane {
         world.getChildren().addAll(1, bricks);          // above the background, below paddle and ball
     }
 
+    //Make the bricks flash briefly.
     public void flashBrick(ImageView node) {              // hit but not dead (STRONG, HM)
         FadeTransition ft = new FadeTransition(Duration.millis(60), node);
-        ft.setFromValue(1);
-        ft.setToValue(0.3);
-        ft.setCycleCount(4);
+        ft.setFromValue(1); //opacity 1
+        ft.setToValue(0.3); //opacity 0.3
+        ft.setCycleCount(4); //4 time
         ft.setAutoReverse(true);
         ft.play();
         //brick flickered for 120 ms total, 60 flicker then 60 flicker return
